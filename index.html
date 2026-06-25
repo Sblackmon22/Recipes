@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Recipes">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Recipe Book</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #e5e5e0;flex-shrink:0}
+.menu-btn{display:none;background:none;border:none;font-size:24px;cursor:pointer;color:#1a1a1a;padding:2px 6px;line-height:1;flex-shrink:0;min-width:36px;min-height:36px;align-items:center;justify-content:center}
+.topbar-title{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.app{display:flex;flex:1;overflow:hidden;min-height:0}
+.sidebar{width:280px;background:#fff;border-right:1px solid #e5e5e0;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:transform .25s ease}
+.sidebar-header{padding:14px 16px 10px;border-bottom:1px solid #e5e5e0;display:flex;align-items:center;justify-content:space-between}
+.sidebar-header h1{font-size:16px;font-weight:600}
+.sidebar-header p{font-size:11px;color:#888;margin-top:1px}
+.close-sidebar-btn{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:#555;padding:4px;line-height:1;min-width:36px;min-height:36px}
+.search-box{margin:10px 12px 6px;position:relative}
+.search-box input{width:100%;padding:8px 10px 8px 30px;border:1px solid #e5e5e0;border-radius:8px;font-size:16px;background:#f9f9f6;outline:none;-webkit-appearance:none}
+.search-box input:focus{border-color:#999;background:#fff}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#999;font-size:14px}
+.cat-scroll{overflow-x:auto;padding:0 12px 8px;-webkit-overflow-scrolling:touch}
+.cat-scroll::-webkit-scrollbar{height:3px}
+.cat-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
+.cat-tabs{display:flex;gap:5px;width:max-content}
+.cat-tab{padding:5px 11px;border-radius:12px;font-size:12px;border:none;cursor:pointer;background:#f0f0eb;color:#555;transition:all .15s;white-space:nowrap;-webkit-appearance:none}
+.cat-tab.active{background:#1a1a1a;color:#fff}
+.recipe-list{flex:1;overflow-y:auto;padding:6px 0;-webkit-overflow-scrolling:touch}
+.recipe-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;border-left:3px solid transparent;transition:background .1s}
+.recipe-item:hover,.recipe-item:active{background:#f5f5f0}
+.recipe-item.active{background:#f0f0eb;border-left-color:#1a1a1a}
+.recipe-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.recipe-item-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recipe-item-cat{font-size:11px;color:#888}
+.main{flex:1;overflow-y:auto;background:#f5f5f0;-webkit-overflow-scrolling:touch}
+.recipe-view{max-width:660px;margin:0 auto;padding:20px 16px 60px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;color:#888;text-align:center;padding:40px}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.3}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:25}
+
+/* RECIPE CONTENT */
+.recipe-header{margin-bottom:18px}
+.recipe-title{font-size:22px;font-weight:600;margin-bottom:4px}
+.recipe-desc{font-size:14px;color:#555;line-height:1.5;margin-bottom:12px}
+.recipe-meta{display:flex;gap:6px;flex-wrap:wrap}
+.meta-pill{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:#fff;border:1px solid #e5e5e0;font-size:12px;color:#444}
+.meta-pill span{font-weight:500}
+.section-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.section-card{background:#fff;border:1px solid #e5e5e0;border-radius:10px;overflow:hidden}
+.section-card.full{grid-column:1/-1}
+.section-toggle{width:100%;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;text-align:left;transition:background .1s;-webkit-appearance:none}
+.section-toggle:hover,.section-toggle:active{background:#f9f9f6}
+.section-toggle-left{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.section-toggle-icon{font-size:16px}
+.chevron{font-size:14px;color:#999;transition:transform .2s;display:inline-block}
+.chevron.open{transform:rotate(180deg)}
+.section-body{padding:0 14px 14px;display:none;border-top:1px solid #f0f0eb}
+.section-body.open{display:block}
+.ing-table{width:100%;border-collapse:collapse;margin-top:10px;table-layout:fixed}
+.ing-table th{font-size:11px;color:#888;font-weight:500;text-align:left;padding:4px 0;border-bottom:1px solid #f0f0eb}
+.ing-table td{font-size:13px;padding:5px 0;border-bottom:1px solid #f8f8f5;vertical-align:top;word-break:break-word}
+.ing-table td:first-child{color:#666;width:36%;font-size:12px;padding-right:8px}
+.ing-group{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;padding:10px 0 4px;border-bottom:1px solid #f0f0eb}
+.steps-list{margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.step{display:flex;gap:10px;align-items:flex-start}
+.step-num{width:22px;height:22px;border-radius:50%;background:#1a1a1a;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-text{font-size:13px;line-height:1.6;color:#333}
+.tips-list{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.tip{font-size:13px;color:#333;line-height:1.5;padding-left:14px;position:relative}
+.tip::before{content:'•';position:absolute;left:0;color:#999}
+.tools-grid{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.tool-item{font-size:12px;color:#444;padding:3px 0}
+.macro-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.macro-cell{background:#f9f9f6;border-radius:8px;padding:8px 6px;text-align:center}
+.macro-val{font-size:15px;font-weight:600}
+.macro-lbl{font-size:10px;color:#888;margin-top:2px}
+.ref-link{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#555;margin-top:8px;text-decoration:none}
+.method-tabs{display:flex;gap:6px;margin-top:10px;margin-bottom:8px}
+.method-tab{padding:5px 12px;border-radius:8px;font-size:12px;border:1px solid #e5e5e0;cursor:pointer;background:#f9f9f6;font-weight:500;transition:all .15s}
+.method-tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.method-content{display:none}
+.method-content.active{display:block}
+
+@media(max-width:680px){
+  .menu-btn{display:flex}
+  .topbar-title{display:block}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:30;transform:translateX(-100%);width:85%;max-width:320px;border-right:none;box-shadow:4px 0 20px rgba(0,0,0,.15)}
+  .sidebar.open{transform:translateX(0)}
+  .close-sidebar-btn{display:flex}
+  .overlay.visible{display:block}
+  .section-grid{grid-template-columns:1fr}
+  .section-card.full{grid-column:1}
+  .macro-row{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay"></div>
+
+<div class="topbar">
+  <button class="menu-btn" id="menu-btn">&#9776;</button>
+  <span class="topbar-title" id="topbar-title">Recipe Book</span>
+</div>
+
+<div class="app">
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div>
+      <h1>Recipe Book</h1>
+      <p id="recipe-count">19 recipes</p>
+    </div>
+    <button class="close-sidebar-btn" id="close-sidebar-btn">&#10005;</button>
+  </div>
+  <div class="search-box">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="search" placeholder="Search recipes..." autocomplete="off">
+  </div>
+  <div class="cat-scroll"><div class="cat-tabs" id="cat-tabs"></div></div>
+  <div class="recipe-list" id="recipe-list"></div>
+</div>
+
+<div class="main" id="main">
+  <div id="main-content">
+    <div class="empty-state">
+      <div class="empty-icon">&#127859;</div>
+      <p style="font-size:15px;font-weight:500;color:#444;margin-bottom:4px">Select a recipe</p>
+      <p style="font-size:13px">Tap the menu to browse all recipes</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const CATS = ["All","Burgers","Sandwiches","Smoothies","Breakfast","Dessert","Chinese","Italian","Vegetables","Meat","Miscellaneous"];
+
+const recipes = [
+  {id:1,name:"Burger Buns",cat:"Burgers",icon:"🍞",
+   desc:"Japanese-style buns made with tangzhong. Soft and pillowy, stays fresh longer than standard buns.",
+   serves:"8 buns",
+   timing:[["Prep","~30 min"],["Proof","2-4 hrs"],["Bake","15-18 min"]],
+   macros:{cal:"~220",p:"~6g",c:"~38g",f:"~5g",per:"1 bun"},
+   ingredients:[
+     {group:"Tangzhong",items:[["2 tbsp","Bread flour"],["2 tbsp","Water"],["4 tbsp","Milk"]]},
+     {group:"Dough",items:[["2.5 cups","Bread flour"],["½ cup","Milk"],["1 tbsp","Active dry yeast"],["1 tsp","Sea salt"],["2.5 tbsp","Sugar"],["1 + 1 yolk","Egg"],["3 tbsp","Unsalted butter, softened"]]},
+     {group:"Egg Wash",items:[["1","Egg"],["1 tbsp","Milk"]]}
+   ],
+   steps:[
+     {n:"1",title:"Tangzhong",text:"Combine 2 tbsp flour, 2 tbsp water, 4 tbsp milk in a pot. Cook medium heat stirring constantly until a paste (~2-3 min). Cover with plastic wrap directly on surface. Cool completely."},
+     {n:"2",title:"Activate yeast",text:"Heat ½ cup milk to 95°F (~25 sec microwave). Mix with yeast. Let sit 8 min until foamy. No foam = dead yeast, restart."},
+     {n:"3",title:"Make dough",text:"Mix dry ingredients in stand mixer with dough hook. Add yeast mixture and tangzhong on low. Add egg + yolk. Knead 10 min on medium, gradually adding butter in small pieces. Dough should be smooth and slightly tacky."},
+     {n:"4",title:"First proof",text:"Shape into ball, place in oiled bowl, cover with plastic wrap. Proof room temp 1-2 hrs until doubled."},
+     {n:"5",title:"Shape + second proof",text:"Punch down. Divide into 8 balls. Place on parchment-lined tray. Cover loosely. Proof 1-2 hrs until puffy."},
+     {n:"6",title:"Bake",text:"Brush with egg wash. Bake 375°F for 15-18 min until deep golden. Cool 15 min on wire rack before slicing."}
+   ],
+   tips:["Do not skip tangzhong — it's what makes these soft","Butter must be room temp","Windowpane test: stretch small piece until light shows through","Sesame seeds: sprinkle after egg wash before baking"],
+   tools:["Stand mixer with dough hook","Small pot","Mixing bowls","Plastic wrap","Baking tray","Wire rack"],
+   notes:"Room temp airtight 3 days. Freeze individually wrapped 2 months.",
+   ref:"https://www.youtube.com/watch?v=gTGSUYMu6Ns"},
+
+  {id:2,name:"Burger Patties",cat:"Burgers",icon:"🥩",
+   desc:"80/20 ground beef patties with smoked paprika blend. Covers both cast iron pan and grill methods.",
+   serves:"4 patties",
+   timing:[["Prep","~10 min"],["Cook","~10-12 min"],["Rest","~5 min"]],
+   macros:{cal:"~290",p:"~22g",c:"~0g",f:"~22g",per:"1 patty"},
+   ingredients:[
+     {group:"Patty Seasoning Blend",items:[["1 lb","Ground beef 80/20"],["2 tsp","Smoked paprika"],["1 tsp","Onion powder"],["1 tsp","Garlic powder"],["½ tsp","Cayenne powder"],["½ tsp","Ground mustard powder"]]},
+     {group:"Surface (after forming)",items:[["To taste","Kosher salt"],["To taste","Freshly cracked black pepper"]]},
+     {group:"Cooking",items:[["1 tsp","Oil (cast iron method)"],["1 tbsp","Butter (for toasting buns)"]]}
+   ],
+   steps:[
+     {n:"1",title:"Season",text:"Mix smoked paprika, onion powder, garlic powder, cayenne, and mustard powder into beef. Mix gently 10-15 sec — do not overwork."},
+     {n:"2",title:"Form",text:"Divide into 4 portions (~4 oz each). Flatten to ¾ inch. Press thumb indent in center to prevent doming. After forming, season outside with kosher salt and freshly cracked pepper only."},
+     {n:"3",title:"Cook — see method tabs below",text:"Choose cast iron or grill method."},
+     {n:"4",title:"Rest",text:"Wire rack, 3-5 min. Tent with foil to keep warm."},
+     {n:"5",title:"Toast buns",text:"Same pan or grill: butter, toast cut-side down 60-90 sec until golden."}
+   ],
+   tips:["Mix blend INTO the beef, salt and pepper ON the surface after forming","80/20 self-bastes — the fat renders and keeps patties juicy","Never press down on the patty while cooking — squeezes out moisture","Smash style: keep as loose balls and smash flat in the pan immediately on contact"],
+   tools:["Cast iron skillet or grill","Slotted spatula","Wire rack","Aluminum foil","Instant read thermometer"],
+   cookMethods:{
+     "Cast Iron":[
+       {t:"Setup",text:"Heat cast iron on medium-high until very hot. Add ~1 tsp oil — just enough to coat."},
+       {t:"Cook",text:"Place patties. Do not move for 3-4 min until a deep crust forms and sides begin to brown."},
+       {t:"Flip",text:"Flip once. Cook 2-4 min more. Add cheese near end, cover with lid 30-60 sec to melt."},
+       {t:"Pros",text:"Superior crust (Maillard reaction), better heat retention, more control, cheese melts easier."},
+       {t:"Watch out",text:"Hot spots — rotate pan if needed. Seasoning with paprika/sugar can burn if heat too high. Use medium-high, not screaming high."}
+     ],
+     "Grill":[
+       {t:"Setup",text:"Preheat grill. Set up two zones: direct heat (high) and indirect (no heat below). Oil the patties directly — not the grates."},
+       {t:"Sear",text:"Direct heat 2-3 min per side to develop grill marks and crust."},
+       {t:"Finish",text:"Move to indirect zone for remaining cook time. Close lid — acts like a convection oven. Prevents seasoning from burning."},
+       {t:"Cheese",text:"Add cheese on indirect zone with lid closed 1-2 min."},
+       {t:"Pros",text:"Smoky char flavor, better for cooking multiple patties at once."},
+       {t:"Watch out",text:"Flare-ups from dripping fat hit the paprika/sugar seasoning and burn it instantly. Move to indirect immediately if flare-up occurs. Two-zone is non-negotiable."}
+     ]
+   },
+   doneness:[["Rare","120-125°F","Red center, very soft"],["Medium Rare","130-135°F","Pink center, juicy"],["Medium","140-145°F","Slight pink, slight resistance"],["Well Done","160°F+","Firm, no pink"]]},
+
+  {id:3,name:"Classic Cheeseburger",cat:"Burgers",icon:"🍔",
+   desc:"The standard. Simple and clean — American cheese, ketchup, mustard, pickles. About the quality of the beef.",
+   serves:"4 burgers",
+   timing:[["Patties","~20 min"],["Toppings","~5 min"],["Assembly","~3 min"]],
+   macros:{cal:"~660",p:"~33g",c:"~40g",f:"~38g",per:"1 burger"},
+   ingredients:[
+     {group:"Patty",items:[["4","Seasoned burger patties (see Burger Patties)"],["4","Burger buns, toasted"]]},
+     {group:"Cheese",items:[["1-2 slices","American cheese (or cheddar)"]]},
+     {group:"Vegetables",items:[["1-2 leaves","Iceberg or romaine lettuce"],["2-3 slices","Ripe tomato"],["3-4 rings","White or yellow onion"],["4-6 slices","Dill pickle"]]},
+     {group:"Sauce",items:[["1 tbsp","Ketchup"],["1 tbsp","Yellow mustard"],["Optional","Mayonnaise"]]}
+   ],
+   steps:[
+     {n:"1",title:"Cook patties",text:"See Burger Patties recipe. Add American cheese near end of cooking — cover pan with lid 30-60 sec to melt."},
+     {n:"2",title:"Toast buns",text:"Butter in same pan. Toast cut-side down 60-90 sec until golden brown."},
+     {n:"3",title:"Assemble",text:"Bottom bun: ketchup + mustard (+ mayo optional). Layer: lettuce first, tomato, onion, pickles. Place cheesy patty on top. Top bun: ketchup. Press down gently."}
+   ],
+   tips:["Lettuce on bottom bun — moisture barrier prevents sogginess","American cheese melts best of any cheese — no substitutes for the classic","Caramelized onion variation: cook onion in butter on low 20-25 min for sweeter flavor"],
+   tools:["Cast iron or grill","Spatula","Wire rack"]},
+
+  {id:4,name:"Bacon BBQ Burger",cat:"Burgers",icon:"🥓",
+   desc:"Rich, smoky, and sweet. Bacon + caramelized onions + cheddar + BBQ sauce. One of the most popular burger combinations.",
+   serves:"4 burgers",
+   timing:[["Bacon","20 min"],["Onions","25 min"],["Patties","~20 min"],["Assembly","~5 min"]],
+   macros:{cal:"~820",p:"~40g",c:"~48g",f:"~47g",per:"1 burger"},
+   ingredients:[
+     {group:"Patty",items:[["4","Seasoned burger patties (see Burger Patties)"],["4","Burger buns, toasted"]]},
+     {group:"Cheese",items:[["1-2 slices","Sharp cheddar or pepper jack"]]},
+     {group:"Bacon",items:[["3-4 strips per burger","Thick-cut bacon (12-16 strips total)"]]},
+     {group:"Caramelized Onions",items:[["1 medium","Yellow onion, thinly sliced"],["1 tbsp","Butter"],["Pinch","Salt + sugar"]]},
+     {group:"Sauce",items:[["1-2 tbsp","BBQ sauce per burger"],["Optional","Mayonnaise on bottom bun"]]},
+     {group:"Veg",items:[["1-2 leaves","Romaine"],["2-3 rings","Pickled jalapeño (optional)"]]}
+   ],
+   steps:[
+     {n:"1",title:"Bacon",text:"Lay strips on foil-lined sheet pan. Bake 400°F for 15-18 min until crispy. Drain on paper towels."},
+     {n:"2",title:"Caramelized onions",text:"Slice thin. Cook in butter on LOW heat 20-25 min stirring occasionally until deep golden and very sweet. Season with salt and pinch of sugar. Do not rush — high heat makes them bitter."},
+     {n:"3",title:"Cook patties",text:"See Burger Patties recipe. Add cheddar near end, melt with lid."},
+     {n:"4",title:"Assemble",text:"Bottom bun: thin mayo layer + BBQ sauce. Lettuce. Place cheesy patty. Top with caramelized onions, then bacon strips crossed for coverage. Top bun: BBQ sauce."}
+   ],
+   tips:["Start bacon in the oven before everything else — it takes longest","Low heat caramelized onions: cannot be rushed, high heat = bitter","Bacon strips crossed = better coverage per bite","Pepper jack instead of cheddar if you want more heat"],
+   tools:["Foil-lined sheet pan","Cast iron or grill","Spatula","Small pan for onions"]},
+
+  {id:5,name:"Mushroom Swiss Burger",cat:"Burgers",icon:"🍄",
+   desc:"Earthy, savory, and rich. Sauteed cremini mushrooms with Swiss and homemade garlic aioli.",
+   serves:"4 burgers",
+   timing:[["Aioli","~5 min"],["Mushrooms","~10 min"],["Patties","~20 min"],["Assembly","~5 min"]],
+   macros:{cal:"~720",p:"~36g",c:"~41g",f:"~42g",per:"1 burger"},
+   ingredients:[
+     {group:"Patty",items:[["4","Seasoned burger patties (see Burger Patties)"],["4","Burger buns, toasted"]]},
+     {group:"Cheese",items:[["1-2 slices","Swiss cheese"]]},
+     {group:"Mushrooms",items:[["8 oz","Cremini or white button mushrooms, sliced"],["1 tbsp","Butter"],["1 clove","Garlic, minced"],["1 tsp","Worcestershire sauce"],["To taste","Salt and black pepper"]]},
+     {group:"Garlic Aioli",items:[["3 tbsp","Mayonnaise"],["1 clove","Garlic, minced (or ½ tsp garlic powder)"],["1 tsp","Lemon juice"],["Pinch","Salt"]]},
+     {group:"Veg",items:[["1-2 leaves","Butter or romaine lettuce"],["2-3 slices","Tomato"]]}
+   ],
+   steps:[
+     {n:"1",title:"Garlic aioli",text:"Mix mayo, minced garlic, lemon juice, pinch of salt. Refrigerate until ready."},
+     {n:"2",title:"Mushrooms",text:"Butter in pan on medium-high. Add mushrooms in single layer — do not stir for 2 min so they brown. Add garlic, stir. Cook until golden, 3-4 min more. Add Worcestershire, stir, cook 1 min. Season."},
+     {n:"3",title:"Cook patties",text:"See Burger Patties recipe. Add Swiss near end, melt with lid."},
+     {n:"4",title:"Assemble",text:"Bottom bun: generous garlic aioli. Lettuce, tomato. Cheesy patty. Pile of sauteed mushrooms. Top bun: more garlic aioli."}
+   ],
+   tips:["Don't stir mushrooms for first 2 min — they need to brown not steam","Make aioli in advance — flavor develops as it sits","Be generous with mushrooms — they shrink significantly during cooking","Worcestershire adds depth — don't skip it"],
+   tools:["Cast iron or grill","Spatula","Pan for mushrooms","Small bowl for aioli"]},
+
+  {id:6,name:"Fried Egg Sandwich",cat:"Sandwiches",icon:"🥚",
+   desc:"Classic egg sandwich with bacon, fresh greens, tomato, and smoky mayo. Built bottom to top.",
+   serves:"1 sandwich",
+   timing:[["Bacon","20 min"],["Prep","~5 min"],["Cook","~8 min"],["Total","~35 min"]],
+   macros:{cal:"~520",p:"~22g",c:"~30g",f:"~35g",per:"1 sandwich"},
+   ingredients:[
+     {group:"",items:[["1","Egg"],["2 slices","Pork bacon"],["2 slices","Bread (sourdough or brioche recommended)"],["2 tbsp","Butter"],["1 slice","Tomato"],["Handful","Spinach or romaine"],["To taste","Kosher salt + black pepper"],["Optional","1-2 slices cheese"],["Optional","Avocado, sliced"]]},
+     {group:"Smoky Mayo",items:[["2 tbsp","Mayo"],["1 tsp","Hot sauce"],["1 tsp","Paprika"]]}
+   ],
+   steps:[
+     {n:"1",title:"Bacon",text:"Lay strips on parchment-lined baking sheet. Bake 400°F for 20 min flipping halfway. Drain on paper towels."},
+     {n:"2",title:"Smoky mayo",text:"Mix mayo, hot sauce, paprika. Set aside."},
+     {n:"3",title:"Toast bread",text:"Spread butter on bread. Toast cut-side down in pan over medium until golden."},
+     {n:"4",title:"Fry egg",text:"Same pan, fry egg. Season with kosher salt and pepper."},
+     {n:"5",title:"Assemble (bottom to top)",text:"Sauce → lettuce → tomato → egg → cheese → bacon. Cut in half and serve."}
+   ],
+   tips:["Baked bacon = hands-off and less splatter","Lettuce on bottom acts as moisture barrier","Sourdough or brioche are the best bread choices","Smoky mayo is the move — ketchup also works"],
+   tools:["Baking sheet","Parchment paper","Pan","Butter knife","Paper towels"]},
+
+  {id:7,name:"Penne Bolognese",cat:"Italian",icon:"🍝",
+   desc:"Slow-cooked Italian meat sauce. Quick version: 20-25 min simmer. Traditional: 60-120 min.",
+   serves:"4",
+   timing:[["Prep","~15 min"],["Quick cook","~40 min"],["Traditional","~2.5 hrs"]],
+   macros:{cal:"~750",p:"~45g",c:"~78g",f:"~22g",per:"¼ recipe"},
+   ingredients:[
+     {group:"",items:[["1 lb","Penne or rotini"],["3 tbsp","Olive oil"],["2 cloves","Garlic, minced"],["½","Red bell pepper, diced"],["2 sticks","Celery, diced"],["½","Red onion, diced"],["1 can","Crushed peeled tomatoes"],["1 lb","Ground beef 80/20"],["½ tsp","Salt + black pepper"],["1.5 tbsp","Dried basil"],["¼ cup","Chicken stock (quick) / ½ cup (traditional)"],["1.5 tsp","Red wine vinegar (quick) / 1 tbsp (traditional)"],["To serve","Parmesan + fresh basil"]]}
+   ],
+   steps:[
+     {n:"1",title:"Prep",text:"Mince garlic. Dice pepper, celery, onion to ¼ inch."},
+     {n:"2",title:"Cook pasta",text:"Heavily salted boiling water. Al dente (1-2 min under package time). Reserve ½ cup pasta water."},
+     {n:"3",title:"Sauce",text:"Oil + garlic. Sweat vegetables 5-6 min (gentle heat, no browning). Add beef + seasoning, brown 8-10 min, drain fat. Add tomatoes, stock, vinegar. Simmer 20-25 min (quick) or 60-120 min (traditional). Add basil at end."},
+     {n:"4",title:"Flash fry",text:"High heat: combine sauce + pasta + pasta water. Toss 2-3 min until sauce clings and emulsifies. Plate, top with parmesan and fresh basil."}
+   ],
+   tips:["Sweating ≠ sauteing — gentle heat, soft not brown","Pasta water emulsification = glossy restaurant finish","Try red wine instead of vinegar","Quick version: reduce liquid for faster reduction"],
+   tools:["Large pot","Large pan","Colander","Spatula"],
+   ref:"https://www.simplywhisked.com/penne-bolognese/"},
+
+  {id:8,name:"Smoothie — Power Builder",cat:"Smoothies",icon:"🥤",
+   desc:"Post-workout. Highest protein at 48g. Flaxseed oil for omega-3s. Double protein source from whey and Greek yogurt.",
+   serves:"1 serving",timing:[["Total","~3 min"]],
+   macros:{cal:"~620",p:"~48g",c:"~58g",f:"~20g",per:"1 serving"},
+   ingredients:[{group:"",items:[["1 cup","Whole milk"],["1 scoop","Vanilla protein powder"],["½ cup","Greek yogurt"],["¼ cup","Rolled oats"],["1 medium","Frozen banana"],["1 tbsp","Chia seeds"],["1 tbsp","Flaxseed oil"]]}],
+   steps:[{n:"1",title:"Pulse oats first",text:"Pulse oats alone 10 sec to break down."},{n:"2",title:"Blend",text:"Add all remaining ingredients. Blend 45-60 sec until smooth."}],
+   tips:["Oats first — prevents chunky texture","Frozen banana = no ice needed","Best post-workout within 30 min"],
+   tools:["Blender"]},
+
+  {id:9,name:"Smoothie — Pre-Workout",cat:"Smoothies",icon:"🥤",
+   desc:"Pre-workout fuel. Highest carbs at 72g. Low fat for easy digestion. Berry and mango for antioxidants.",
+   serves:"1 serving",timing:[["Total","~3 min"]],
+   macros:{cal:"~540",p:"~35g",c:"~72g",f:"~14g",per:"1 serving"},
+   ingredients:[{group:"",items:[["1 cup","Whole milk"],["1 scoop","Vanilla protein powder"],["⅓ cup","Rolled oats"],["1 cup","Frozen mixed berries"],["½ cup","Frozen mango chunks"],["1 tbsp","Chia seeds"],["1 tsp","Honey"]]}],
+   steps:[{n:"1",title:"Pulse oats first",text:"Pulse oats alone 10 sec."},{n:"2",title:"Blend",text:"Add all remaining. Blend 45-60 sec."}],
+   tips:["Drink 60-90 min before training","Deliberately low fat — fat slows digestion pre-workout","Berries = anthocyanins, reduce oxidative stress during exercise"],
+   tools:["Blender"]},
+
+  {id:10,name:"Smoothie — PB Recovery",cat:"Smoothies",icon:"🥤",
+   desc:"Rest days or high-calorie goal days. Highest calorie at 680. Peanut butter for slow-release protein and healthy fats.",
+   serves:"1 serving",timing:[["Total","~3 min"]],
+   macros:{cal:"~680",p:"~42g",c:"~55g",f:"~30g",per:"1 serving"},
+   ingredients:[{group:"",items:[["1 cup","Whole milk"],["1 scoop","Vanilla protein powder"],["½ cup","Greek yogurt"],["2 tbsp","Smucker's Natural PB"],["1 medium","Frozen banana"],["½ cup","Frozen strawberries"],["1 tbsp","Chia seeds"]]}],
+   steps:[{n:"1",title:"Blend",text:"Add milk and PB first. Blend 20 sec. Add frozen fruit, protein, yogurt, chia. Blend 45-60 sec."}],
+   tips:["Most filling — fat + protein slows digestion","Good for 3,000 cal goal days","Strawberries = Vitamin C for collagen synthesis"],
+   tools:["Blender"]},
+
+  {id:11,name:"Neapolitan Pizza",cat:"Italian",icon:"🍕",
+   desc:"Poolish-based Neapolitan pizza. Poolish needs 17-25 hrs — plan ahead. Makes 6 medium pizzas.",
+   serves:"6 pizzas",
+   timing:[["Poolish (day before)","17-25 hrs"],["Dough + proof","~3.5 hrs"],["Bake per pizza","~10 min"]],
+   macros:{cal:"~480",p:"~14g",c:"~96g",f:"~3g",per:"1 pizza (dough only)"},
+   ingredients:[
+     {group:"Poolish (day before)",items:[["1 cup","AP flour"],["1 cup","Water (115°F)"],["½ packet","Active dry yeast"],["1 tbsp","Honey"]]},
+     {group:"Dough",items:[["All","Poolish"],["1.5 cups","Bread flour"],["1 cup","AP flour"],["¾ cup","Water"],["3 tbsp","Salt"]]},
+     {group:"San Marzano Sauce",items:[["1 can (28oz)","San Marzano whole peeled tomatoes"],["Generous","Olive oil (~3x normal)"],["4-6 cloves","Garlic, sliced"],["Pinch","Red pepper flakes"],["To finish","Fresh basil"]]},
+     {group:"Per pizza",items:[["3-4 oz","Fresh mozzarella, torn"],["4-5 leaves","Fresh basil"],["Drizzle","Olive oil before + after baking"]]}
+   ],
+   steps:[
+     {n:"1",title:"Poolish (day before)",text:"Mix warm water + yeast + honey until foamy. Add flour. Mix well. Rest 1 hr room temp. Refrigerate 16-24 hrs. Ready when doubled with slight dip in center."},
+     {n:"2",title:"Dough",text:"Dissolve salt in water. Combine all ingredients slowly. Work 7 min. Cover, rest 1 hr. Knead 10 min. Oil + damp towel, rest 1 hr. Divide into 6 balls. Proof on tray 2 hrs."},
+     {n:"3",title:"Sauce",text:"Pulse tomatoes 3-4 times (1 sec each). Generous oil in pan. Add garlic cold, heat until golden. Add red pepper, pour in tomatoes. Simmer 10-15 min. Finish with basil."},
+     {n:"4",title:"Bake",text:"Max oven (500-550°F) with stone/steel inside 1 hr before. Stretch dough by hand. Drizzle oil on dough before sauce. Add sauce, torn mozzarella. Bake 8-12 min until charred spots appear."}
+   ],
+   tips:["Poolish = complex flavor — never rush it","Taste tomatoes before cooking — adjust acid with lemon or sugar","Stretch by hand only — rolling pin kills bubbles","Olive oil before sauce prevents gum line"],
+   tools:["Pizza stone or steel","Stand mixer","Pizza peel","Small pan for sauce"]},
+
+  {id:12,name:"Pancakes",cat:"Breakfast",icon:"🥞",
+   desc:"Chocolate pancakes with cocoa powder and vanilla. 10 small pancakes. Add chocolate chips for extra richness.",
+   serves:"10 small pancakes",
+   timing:[["Prep","~10 min"],["Cook","~15 min"],["Total","~25 min"]],
+   macros:{cal:"~120",p:"~3g",c:"~18g",f:"~4g",per:"1 pancake"},
+   ingredients:[
+     {group:"Dry",items:[["1 cup","Flour"],["3 tbsp","Sugar"],["2 tsp","Baking powder"],["½ tsp","Salt"],["2.5 tbsp","Cocoa powder"]]},
+     {group:"Wet",items:[["1 cup","Milk"],["2 tbsp","Butter or vegetable oil"],["1 large","Egg"],["½ tsp","Vanilla extract"]]},
+     {group:"Optional",items:[["Handful","Chocolate chips"],["Drizzle","Maple syrup to serve"]]}
+   ],
+   steps:[
+     {n:"1",title:"Melt butter",text:"Melt butter and let cool slightly."},
+     {n:"2",title:"Mix separately",text:"Whisk wet ingredients together. Whisk dry ingredients together."},
+     {n:"3",title:"Combine",text:"Add wet to dry. Mix until just combined — lumps are fine. Overmixing = tough pancakes."},
+     {n:"4",title:"Cook",text:"Medium-high heat with canola oil. Pour batter. Flip when edges look set and bottom is browning (~3 min)."}
+   ],
+   tips:["Lumpy batter = better pancakes — do not overmix","Batter should be thick but pourable","Flip only once","Medium-high not screaming high — prevents burning"],
+   tools:["Mixing bowl","Whisk","Non-stick pan","Spatula"]},
+
+  {id:13,name:"Grapefruit Bars",cat:"Dessert",icon:"🍋",
+   desc:"Ruby red grapefruit bars with a shortbread crust and bright citrus custard filling. Tart and sugary.",
+   serves:"~12 bars",
+   timing:[["Prep","~15 min"],["Bake crust","20 min"],["Bake filling","25 min"],["Rest","2 hrs"]],
+   macros:{cal:"~220",p:"~3g",c:"~38g",f:"~8g",per:"1 bar"},
+   ingredients:[
+     {group:"Crust",items:[["1.5 cups","Flour"],["⅓ cup","Powdered sugar"],["¼ tsp","Salt"],["⅔ cup (1.5 sticks)","Butter"]]},
+     {group:"Filling",items:[["1.5 cups","Sugar"],["½ cup","Flour"],["3","Eggs"],["1 tbsp","Grapefruit zest"],["½ tbsp","Lemon zest"],["⅓ cup","Grapefruit juice"],["⅓ cup","Lemon juice"],["Optional","2-3 drops pink food coloring"]]}
+   ],
+   steps:[
+     {n:"1",title:"Crust",text:"Pulse all crust ingredients in food processor until fine crumbs that just start to clump. Press into pan."},
+     {n:"2",title:"Bake crust",text:"350°F for 20 min."},
+     {n:"3",title:"Filling",text:"Whisk sugar + flour. Add eggs one at a time, whisking after each. Add zest, juice, food coloring. Whisk."},
+     {n:"4",title:"Bake filling",text:"Pour over hot crust. Bake 25 min until just set."},
+     {n:"5",title:"Rest + serve",text:"Cool 1 hr room temp. Refrigerate 1 hr. Cut into squares. Dust with powdered sugar before serving."}
+   ],
+   tips:["Slight jiggle when done is fine — sets as it cools","Go easy with powdered sugar — it absorbs quickly","Taste the grapefruit — acidity varies between fruit","If too liquidy: adding slightly more flour to filling may help"],
+   tools:["Mixing bowl","Whisk","Food processor (or fork)","9x13 baking pan"],
+   ref:"https://www.dessertnowdinnerlater.com/ruby-red-grapefruit-bars/"},
+
+  {id:14,name:"Chicken Lo Mein",cat:"Chinese",icon:"🍜",
+   desc:"Soft noodles in stir-fry sauce with chicken, bok choy, carrots, and scallions. Everything prepped before heat.",
+   serves:"2",
+   timing:[["Prep","~15 min"],["Cook","~12 min"],["Total","~30 min"]],
+   macros:{cal:"~580",p:"~42g",c:"~65g",f:"~14g",per:"½ recipe"},
+   ingredients:[
+     {group:"Protein",items:[["½ lb","Chicken breast, thin rectangles"],["To taste","Salt, red pepper flakes, cayenne"]]},
+     {group:"Aromatics",items:[["2 tsp","Garlic, minced"],["4 tsp","Ginger, julienned (peel with spoon)"]]},
+     {group:"Veg + Noodles",items:[["½","Carrot, julienned"],["1","Baby bok choy, sliced"],["3","Scallions, ½ inch bias cuts"],["⅔ cup","Lo mein noodles"]]},
+     {group:"Sauce",items:[["1 batch","Stir-fry sauce (see Stir-Fry Sauce)"]]}
+   ],
+   steps:[
+     {n:"1",title:"Prep everything first",text:"Mince garlic. Peel ginger with spoon, julienne. Slice bok choy. Julienne carrot. Scallions on bias. Slice chicken thin, season. Make stir-fry sauce. Cook noodles al dente."},
+     {n:"2",title:"Wok",text:"High heat, oil. Aromatics 30-45 sec. Add chicken before aromatics burn. Cook halfway. Add bok choy stems + carrot. Almost done: add bok choy leaves + noodles."},
+     {n:"3",title:"Sauce",text:"Pour stir-fry sauce. Toss constantly — thickens fast. Remove from heat slightly early. Residual heat finishes it."}
+   ],
+   tips:["Mise en place before heat — stir-fry waits for no one","Ginger peeling trick: back of a spoon","Order: aromatics → protein → hard veg → soft veg → noodles → sauce","Remove from heat early — pan continues cooking"],
+   tools:["Wok or large pan","Chef's knife","Pot for noodles"],
+   ref:"https://www.youtube.com/watch?v=SFeChtLaHy4"},
+
+  {id:15,name:"Chicken Fried Rice",cat:"Chinese",icon:"🍚",
+   desc:"One-pan fried rice with chicken, eggs, and vegetables. Day-old cold rice is essential — no exceptions.",
+   serves:"3-4",
+   timing:[["Rice (night before)","~30 min + overnight"],["Prep","~15 min"],["Cook","~15 min"]],
+   macros:{cal:"~520",p:"~38g",c:"~58g",f:"~12g",per:"¼ recipe"},
+   ingredients:[
+     {group:"",items:[["1 lb","Chicken, diced"],["2 cups","White rice (cook night before)"],["2","Eggs, whisked"],["1 tbsp + 1 tbsp","Cornstarch + water slurry"],["3 cloves","Garlic, minced"],["1 tbsp","Ginger, minced"],["½","White onion, half-moon"],["½ each","Green + red bell pepper, diced"],["1","Carrot, diced"],["3 tbsp","Soy sauce"],["1 tbsp","White rice vinegar"],["½","Lemon"],["Oil","High-heat oil"]]}
+   ],
+   steps:[
+     {n:"1",title:"Rice (night before)",text:"Wash until water runs clear. Cook. Spread to cool. Refrigerate overnight. Cold dry rice fries — fresh rice steams and clumps."},
+     {n:"2",title:"Prep all",text:"Mince garlic + ginger. Half-moon onion. Dice peppers and carrot. Dice scallion on 45° bias. Dice + season chicken. Whisk eggs. Mix cornstarch slurry."},
+     {n:"3",title:"Cook",text:"High heat throughout. Oil. Aromatics 30-45 sec. Chicken halfway. Add veg. Push everything to sides — scramble eggs in center, fold in. Add rice, break clumps. Add soy sauce + rice vinegar. Add cornstarch slurry. Stir fast. Squeeze lemon."},
+     {n:"4",title:"Plate",text:"Fill round bowl, flip onto plate for dome. Top with scallions."}
+   ],
+   tips:["Day-old cold rice is rule #1","High heat throughout — low heat = steamed not fried","Cornstarch slurry = glossy restaurant coating","Scramble eggs in cleared center space then fold in"],
+   tools:["Large wok or high-sided pan","Spatula","Chef's knife"]},
+
+  {id:16,name:"Stir-Fry Sauce",cat:"Chinese",icon:"🥢",
+   desc:"Base sauce for lo mein and fried rice. 3 minutes. Cornstarch creates thick glossy coating. Make before cooking starts.",
+   serves:"1 batch",timing:[["Total","~3 min"]],
+   macros:{cal:"~80",p:"~2g",c:"~9g",f:"~3g",per:"Full batch"},
+   ingredients:[{group:"",items:[["¼ cup","Chicken stock"],["1 tsp","Cornstarch"],["1 tbsp","Soy sauce"],["3 tbsp","Oyster sauce"],["1 tsp","Sesame oil"],["Optional","1 tsp brown sugar"],["Optional","1 tsp rice vinegar"]]}],
+   steps:[
+     {n:"1",title:"Slurry",text:"Add cornstarch to bowl. Slowly whisk in chicken stock a little at a time until completely smooth. No lumps."},
+     {n:"2",title:"Add rest",text:"Add soy sauce, oyster sauce, sesame oil (+ sugar if using). Whisk until combined."}
+   ],
+   tips:["Make before turning on the wok — there is no time during cooking","Stir constantly when it hits the pan — thickens immediately","Too much cornstarch = gluey. Too little = thin"],
+   tools:["Small bowl","Whisk"]},
+
+  {id:17,name:"Chicken Stock",cat:"Miscellaneous",icon:"🍲",
+   desc:"Rich stock from roasted chicken carcasses and mirepoix. Base for soups, sauces, stir-fry sauce, and bolognese.",
+   serves:"~3-4 quarts",
+   timing:[["Roast","45 min"],["Simmer","2-5 hrs"],["Total","~3-6 hrs"]],
+   macros:{cal:"~38",p:"~5g",c:"~3g",f:"~1g",per:"1 cup"},
+   ingredients:[{group:"",items:[["2","Chicken carcasses"],["4-5 qts","Water"],["1","Yellow onion, halved (unpeeled)"],["1 stalk","Celery, rough chop"],["3","Carrots, rough chop"],["4 sprigs","Fresh thyme"],["10 stems","Fresh parsley"],["1 tsp","Black peppercorns"],["2","Bay leaves"]]}],
+   steps:[
+     {n:"1",title:"Roast carcasses",text:"Break into smaller pieces. Parchment-lined sheet pan. Roast 425°F for 45 min until deeply golden brown. The browning = flavor."},
+     {n:"2",title:"Boil + skim",text:"Water to full boil. Add bones. Slide pot slightly off-center so foam collects on one side. Skim grey foam every few minutes for 15-20 min."},
+     {n:"3",title:"Add mirepoix + simmer",text:"Add all vegetables, herbs, peppercorns, bay leaves. Reduce to low simmer — barely bubbling. Simmer uncovered 2-5 hrs."},
+     {n:"4",title:"Strain",text:"Remove large bones. Strain through fine mesh + cheesecloth. Season lightly. Cool completely before refrigerating. Skim fat once cold."}
+   ],
+   tips:["Roasting bones is the most important step — raw bones = pale weak stock","Never hard boil — makes it cloudy and bitter","Stock should taste bland unsalted — season based on the dish","Good stock gels when cold — that's collagen, it's a good sign"],
+   tools:["2 large pots","Baking sheet","Fine mesh strainer","Cheesecloth","Spider strainer"]},
+
+  {id:18,name:"Chicken Pita",cat:"Sandwiches",icon:"🫓",
+   desc:"Greek-style pita with homemade tzatziki, marinated chicken thighs, sauteed peppers and onions, fresh spinach.",
+   serves:"2 pitas",
+   timing:[["Tzatziki","15 min + chill"],["Chicken","~20 min"],["Assembly","~5 min"]],
+   macros:{cal:"~520",p:"~40g",c:"~45g",f:"~18g",per:"1 pita"},
+   ingredients:[
+     {group:"Tzatziki",items:[["2 cups","Greek yogurt, plain"],["½","Cucumber"],["3 cloves","Garlic, minced"],["2 tbsp","Olive oil"],["To taste","Salt, pepper"],["Optional","Fresh dill or lemon juice"]]},
+     {group:"Marinade",items:[["2 tbsp","Olive oil"],["1 tbsp","Lemon juice"],["1 tsp","Garlic powder"],["1 tsp","Cumin"],["1 tsp","Paprika"],["½ tsp","Oregano"]]},
+     {group:"Chicken + Veg",items:[["2 thighs","Chicken thighs, boneless"],["½","Red onion, julienned"],["½","Green bell pepper, julienned"],["Handful","Fresh spinach"],["2-3 slices","Tomato"]]},
+     {group:"Wrap",items:[["2","Pita bread"],["Foil","For wrapping"]]}
+   ],
+   steps:[
+     {n:"1",title:"Tzatziki",text:"Grate cucumber, salt it, strain 10 min, squeeze completely dry. Mix with yogurt, garlic, olive oil. Season. Refrigerate 30+ min."},
+     {n:"2",title:"Marinate chicken",text:"Combine marinade, coat thighs. Rest 30 min minimum."},
+     {n:"3",title:"Cook",text:"Medium-high pan. Cook thighs whole 5-6 min per side (165°F). Rest 3-5 min. Slice after resting. Same pan: saute peppers and onions 3-4 min."},
+     {n:"4",title:"Assemble + wrap",text:"Spread tzatziki. Layer: spinach, tomato, peppers/onion, chicken. Fold bottom up, fold sides in. Wrap in foil same way."}
+   ],
+   tips:["Squeeze cucumber DRY — watery cucumber = runny tzatziki","Cook thighs whole, slice after resting — keeps them juicier","Foil wrap: expose top so you can peel down while eating"],
+   tools:["Pan","Mesh strainer","Mixing bowls","Knife","Aluminum foil"],
+   ref:"https://www.youtube.com/watch?v=6TIRITAkj60"},
+
+  {id:19,name:"Brussels Sprouts",cat:"Vegetables",icon:"🥦",
+   desc:"Blanched and pan-seared Brussels with rendered bacon, caramelized onions, glaze, lemon zest, and parmesan.",
+   serves:"3-4",
+   timing:[["Prep","~15 min"],["Blanch","~8 min"],["Pan cook","~20 min"]],
+   macros:{cal:"~280",p:"~10g",c:"~22g",f:"~18g",per:"¼ recipe"},
+   ingredients:[{group:"",items:[["1 lb","Brussels sprouts"],["5 strips","Pork bacon, julienned"],["½","Red onion, julienned"],["2 cloves","Garlic, minced"],["1","Lemon, zested"],["Generous","Olive oil"],["To taste","Kosher salt, black pepper"],["To serve","Parmesan, shredded"],["Choose one","Maple glaze OR balsamic glaze"]]}],
+   steps:[
+     {n:"1",title:"Prep sprouts",text:"Paring knife: cut just the tip of root off, halve each sprout through the root. Collect loose leaves. Wash and pat completely dry."},
+     {n:"2",title:"Render bacon",text:"Start in cold pan. Medium heat. Cook until fat renders, not too crispy. Add onion halfway through. Remove bacon + onion, leave fat in pan."},
+     {n:"3",title:"Blanch",text:"Boil 4 qts water + 1.5 tbsp salt. Blanch sprouts 3 min. Drain immediately into ice bath. Pat completely dry."},
+     {n:"4",title:"Sear",text:"Large pan, medium heat, generous olive oil. Sprouts cut-side down. Do not move 3-4 min until deep golden. Flip, cook 2-3 min more."},
+     {n:"5",title:"Glaze",text:"Add glaze to pan. Add sprouts, bacon, onion, garlic, lemon zest. Toss. Cook 1-2 min. Plate and top with parmesan."}
+   ],
+   tips:["Cold pan for bacon — slow fat render is key","Squeeze dry after ice bath — wet sprouts steam not sear","Cut-side down is the money side","Maple = sweeter, balsamic = tangier"],
+   tools:["Large pan","Medium pot","Paring knife","Large bowl (ice bath)","Colander"]}
+];
+
+let activecat = "All";
+let activeid = null;
+
+function renderCatTabs(){
+  document.getElementById("cat-tabs").innerHTML = CATS.map(c=>
+    `<button class="cat-tab${c===activecat?' active':''}" data-cat="${c}">${c}</button>`
+  ).join("");
+}
+
+function setcat(c){
+  activecat=c;
+  renderCatTabs();
+  filterRecipes();
+}
+
+function filterRecipes(){
+  const q = document.getElementById("search").value.toLowerCase();
+  const filtered = recipes.filter(r=>{
+    const mc = activecat==="All"||r.cat===activecat;
+    const mq = !q||r.name.toLowerCase().includes(q)||r.cat.toLowerCase().includes(q)||r.desc.toLowerCase().includes(q);
+    return mc&&mq;
+  });
+  document.getElementById("recipe-count").textContent = filtered.length+" recipe"+(filtered.length!==1?"s":"");
+  document.getElementById("recipe-list").innerHTML = filtered.map(r=>`
+    <div class="recipe-item${r.id===activeid?' active':''}" data-recipe-id="${r.id}">
+      <div class="recipe-icon">${r.icon}</div>
+      <div style="min-width:0">
+        <div class="recipe-item-name">${r.name}</div>
+        <div class="recipe-item-cat">${r.cat} · ${r.serves}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function toggle(id){
+  const b = document.getElementById("body-"+id);
+  const c = document.getElementById("chev-"+id);
+  if(b.classList.contains("open")){b.classList.remove("open");c.classList.remove("open");}
+  else{b.classList.add("open");c.classList.add("open");}
+}
+
+function switchMethod(rid, method){
+  document.querySelectorAll('.method-tab[data-rid="'+rid+'"]').forEach(t=>{
+    t.classList.toggle("active", t.dataset.method===method);
+  });
+  document.querySelectorAll('.method-content[data-rid="'+rid+'"]').forEach(c=>{
+    c.classList.toggle("active", c.dataset.method===method);
+  });
+}
+
+// Event delegation for dynamically generated content - Safari PWA safe
+document.addEventListener('click', function(e){
+  // Section toggles
+  const st = e.target.closest('.section-toggle');
+  if(st){
+    const id = st.dataset.toggleId;
+    if(id) toggle(id);
+    return;
+  }
+  // Method tabs
+  const mt = e.target.closest('.method-tab');
+  if(mt){
+    switchMethod(mt.dataset.rid, mt.dataset.method);
+    return;
+  }
+  // Recipe items in sidebar
+  const ri = e.target.closest('.recipe-item');
+  if(ri && ri.dataset.recipeId){
+    showRecipe(parseInt(ri.dataset.recipeId));
+    return;
+  }
+  // Category tabs
+  const ct = e.target.closest('.cat-tab');
+  if(ct && ct.dataset.cat){
+    setcat(ct.dataset.cat);
+    return;
+  }
+});
+
+function openSidebar(){
+  document.getElementById("sidebar").classList.add("open");
+  document.getElementById("overlay").classList.add("visible");
+}
+function closeSidebar(){
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("overlay").classList.remove("visible");
+}
+
+function showRecipe(id){
+  activeid = id;
+  closeSidebar();
+  filterRecipes();
+  const r = recipes.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById("topbar-title").textContent = r.name;
+
+  let h = `<div class="recipe-header">
+    <div class="recipe-title">${r.icon} ${r.name}</div>
+    <div class="recipe-desc">${r.desc}</div>
+    <div class="recipe-meta">
+      <div class="meta-pill">Serves <span>&nbsp;${r.serves}</span></div>
+      ${r.timing.map(t=>`<div class="meta-pill">${t[0]}<span>&nbsp;${t[1]}</span></div>`).join("")}
+    </div>
+  </div><div class="section-grid">`;
+
+  // MACROS
+  h += `<div class="section-card"><button class="section-toggle" data-toggle-id="mac-${id}">
+    <span class="section-toggle-left"><span class="section-toggle-icon">📊</span> Macros</span>
+    <span class="chevron" id="chev-mac-${id}">▾</span></button>
+    <div class="section-body" id="body-mac-${id}">
+      <div class="macro-row">
+        <div class="macro-cell"><div class="macro-val">${r.macros.cal}</div><div class="macro-lbl">Cal</div></div>
+        <div class="macro-cell"><div class="macro-val">${r.macros.p}</div><div class="macro-lbl">Protein</div></div>
+        <div class="macro-cell"><div class="macro-val">${r.macros.c}</div><div class="macro-lbl">Carbs</div></div>
+        <div class="macro-cell"><div class="macro-val">${r.macros.f}</div><div class="macro-lbl">Fat</div></div>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:8px">Per ${r.macros.per}</div>
+    </div></div>`;
+
+  // INGREDIENTS
+  h += `<div class="section-card"><button class="section-toggle" data-toggle-id="ing-${id}">
+    <span class="section-toggle-left"><span class="section-toggle-icon">🧾</span> Ingredients</span>
+    <span class="chevron" id="chev-ing-${id}">▾</span></button>
+    <div class="section-body" id="body-ing-${id}">
+    <table class="ing-table"><thead><tr><th>Amount</th><th>Ingredient</th></tr></thead><tbody>`;
+  for(const g of r.ingredients){
+    if(g.group) h+=`<tr><td colspan="2" class="ing-group">${g.group}</td></tr>`;
+    for(const [a,i] of g.items) h+=`<tr><td>${a}</td><td>${i}</td></tr>`;
+  }
+  h+=`</tbody></table></div></div>`;
+
+  // PROCEDURE
+  h += `<div class="section-card full"><button class="section-toggle" data-toggle-id="steps-${id}">
+    <span class="section-toggle-left"><span class="section-toggle-icon">👨‍🍳</span> Procedure</span>
+    <span class="chevron" id="chev-steps-${id}">▾</span></button>
+    <div class="section-body" id="body-steps-${id}">
+    <div class="steps-list">`;
+  for(const s of r.steps) h+=`<div class="step"><div class="step-num">${s.n}</div><div class="step-text"><strong>${s.title}</strong> — ${s.text}</div></div>`;
+  h+=`</div>`;
+  // Cook methods if present
+  if(r.cookMethods){
+    const methods = Object.keys(r.cookMethods);
+    h+=`<div class="method-tabs">${methods.map((m,i)=>`<button class="method-tab${i===0?' active':''}" data-rid="${id}" data-method="${m}" >${m}</button>`).join("")}</div>`;
+    for(let i=0;i<methods.length;i++){
+      const m=methods[i
+  {id:20,name:"Potato Wedges & Fries",cat:"Burgers",icon:"🍟",
+   desc:"Crispy oven-baked wedges and fries from the same base recipe. Only the cut changes.",
+   serves:"2-3",
+   timing:[["Prep","~10 min"],["Bake","~30 min"],["Total","~40 min"]],
+   macros:{cal:"~180",p:"~3g",c:"~28g",f:"~7g",per:"½ potato"},
+   ingredients:[{group:"",items:[["2 medium","Russet potatoes, skin on"],["2 tbsp","Olive oil"],["1 tbsp","Salt"],["1 tbsp","Black pepper"],["1 tbsp","Cajun seasoning"],["Optional","½ tsp garlic powder"],["Optional","½ tsp paprika"]]}],
+   steps:[
+     {n:"1",title:"Cut — Wedges",text:"Halve each potato lengthwise. Cut each half into thirds lengthwise = 6 wedges per potato. Keep skin on."},
+     {n:"2",title:"Cut — Fries",text:"Cut into ¼-inch planks then ¼-inch sticks. Soak in cold water 20-30 min for extra crispiness. Pat completely dry before seasoning."},
+     {n:"3",title:"Season",text:"Toss in olive oil until fully coated. Add salt, pepper, cajun seasoning. Toss again."},
+     {n:"4",title:"Bake",text:"Single layer on parchment-lined sheet pan — no overlapping. 440°F. Bake 15 min, flip with tongs, bake another 15 min until golden and crispy."}
+   ],
+   tips:["440°F is essential — lower temp steams instead of crisps","Single layer no overlap is the most important factor","Soak fries in cold water first for extra crispiness","Parboil wedges 5 min before baking for extra crispy exterior"],
+   tools:["Baking sheet","Parchment paper","Large mixing bowl","Tongs"],
+   variations:[["Classic","Salt, pepper, garlic powder","Aioli"],["Cajun","Cajun, paprika, salt, pepper","Ranch"],["Rosemary sea salt","Rosemary, flaky salt, garlic","Garlic aioli"],["Parmesan herb","Parmesan, Italian herbs, garlic","Marinara"]]},
+  {id:21,name:"Sous Vide Ribeye",cat:"Meat",icon:"🥩",
+   desc:"Foolproof ribeye cooked edge-to-edge to perfect doneness in a water bath, then flash seared in a screaming hot cast iron for a dark crust. Near impossible to overcook.",
+   serves:"1-2",
+   timing:[["Season + bag","~10 min"],["Sous vide","1-4 hrs"],["Ice bath (optional)","15-30 min"],["Sear","~3 min"],["Rest","~5 min"]],
+   macros:{cal:"~840",p:"~68g",c:"~0g",f:"~63g",per:"1 ribeye (~14 oz)"},
+   ingredients:[
+     {group:"Steak",items:[["1 ribeye","1.5-2 inch thick, boneless or bone-in"],["Generous","Kosher salt"],["To taste","Freshly cracked black pepper"],["Optional","Smoked paprika or Montreal steak seasoning"]]},
+     {group:"In the bag (aromatics)",items:[["1 sprig","Fresh thyme"],["1 sprig","Fresh rosemary"],["1 clove","Garlic, smashed (NOT minced — botulism risk with raw minced garlic in sealed bags)"],["Optional","1 tbsp olive oil"]]},
+     {group:"Sear",items:[["1 tbsp","Avocado oil (high smoke point — critical)"],["1 tbsp","Butter"],["1 sprig each","Fresh thyme + rosemary for basting"],["2 cloves","Garlic, smashed"]]},
+     {group:"Optional finish",items:[["2 tbsp","Butter, softened"],["1 clove","Garlic, minced"],["1 tsp","Fresh parsley"],["Pinch","Salt (compound butter to top the steak)"]]}
+   ],
+   steps:[
+     {n:"1",title:"Season",text:"Pat ribeye completely dry with paper towels. Season generously with kosher salt and pepper on all sides — more than you think is needed. Let sit at room temperature 30 min if possible."},
+     {n:"2",title:"Bag",text:"Place ribeye in a vacuum seal bag or zip-lock bag. Add thyme, rosemary, and smashed garlic clove. Remove all air. Zip-lock method: lower bag into water with seal open, water pressure pushes air out, seal just before submerging completely."},
+     {n:"3",title:"Sous vide",text:"Set immersion circulator to your target temperature (see doneness table). Submerge bag — clip to side of container to keep submerged. Cook 1-4 hrs. Ribeye is forgiving — longer cook = more tender without overcooking."},
+     {n:"4",title:"Ice bath (recommended)",text:"Remove bag from water. Submerge in ice bath 15-30 min until cold throughout. This step is what separates a good crust from a great crust — cold meat gives you a longer window to build crust before overcooking the interior."},
+     {n:"5",title:"Dry and prep",text:"Remove steak from bag. Discard aromatics. Pat completely dry with paper towels. Any surface moisture = steam = no crust. Season again with a small pinch of salt."},
+     {n:"6",title:"Sear",text:"Heat cast iron on highest heat until smoking — open windows and turn on vent. Add avocado oil, let it begin to smoke. Lay steak away from you. Sear fatty edge first standing upright with tongs for 30-45 sec. Then flat on first side 45-60 sec. Flip. Add butter, garlic, and herb sprigs. Baste constantly — spoon hot butter over steak as it sears. 45-60 sec on second side. Total sear time: under 3 min. Steak is already cooked — you are only building crust."},
+     {n:"7",title:"Rest + serve",text:"Transfer to cutting board. Rest 3-5 min. Slice against the grain or serve whole. Top with compound butter if using — it melts into the hot steak."}
+   ],
+   tips:["Ice bath before searing is the most important tip — cold steak builds better crust","Steak is already fully cooked going into the sear — focus entirely on the crust, not the inside","Pat completely dry twice — once after ice bath, once just before the pan","Avocado oil only for searing — olive oil smokes and burns at this heat","Add butter AFTER the initial sear begins — not at the start or it burns before crust forms","Smashed garlic clove in bag only — never raw minced garlic in sealed sous vide bags (botulism risk)","Open windows before searing — the smoke is intense"],
+   tools:["Sous vide immersion circulator","Vacuum seal bags or zip-lock bags","Large container for water bath","Cast iron skillet","Tongs","Paper towels","Instant read thermometer"],
+   doneness:[["Very Rare","120-128°F / 49-53°C","1-2.5 hrs","Bright red, very soft"],["Medium Rare","129-134°F / 54-57°C","1-4 hrs","Pink, juicy — recommended"],["Medium","135-144°F / 57-62°C","1-4 hrs","Slight pink, firmer"],["Medium Well","145-155°F / 63-68°C","1-3.5 hrs","Mostly grey, firm"],["Well Done","156°F+ / 69°C+","1-3 hrs","No pink, very firm"]]},
+];
+      h+=`<div class="method-content${i===0?' active':''}" data-rid="${id}" data-method="${m}">`;
+      for(const s of r.cookMethods[m]) h+=`<div class="step" style="margin-bottom:6px"><div class="step-num" style="background:#555">${s.t.charAt(0)}</div><div class="step-text"><strong>${s.t}</strong> — ${s.text}</div></div>`;
+      h+=`</div>`;
+    }
+  }
+  h+=`</div></div>`;
+
+  // TOOLS
+  h += `<div class="section-card"><button class="section-toggle" data-toggle-id="tools-${id}">
+    <span class="section-toggle-left"><span class="section-toggle-icon">🔪</span> Tools</span>
+    <span class="chevron" id="chev-tools-${id}">▾</span></button>
+    <div class="section-body" id="body-tools-${id}">
+    <div class="tools-grid">${r.tools.map(t=>`<div class="tool-item">· ${t}</div>`).join("")}</div>
+    </div></div>`;
+
+  // TIPS
+  h += `<div class="section-card"><button class="section-toggle" data-toggle-id="tips-${id}">
+    <span class="section-toggle-left"><span class="section-toggle-icon">💡</span> Tips</span>
+    <span class="chevron" id="chev-tips-${id}">▾</span></button>
+    <div class="section-body" id="body-tips-${id}">
+    <div class="tips-list">${r.tips.map(t=>`<div class="tip">${t}</div>`).join("")}</div>
+    ${r.notes?`<div style="margin-top:10px;font-size:12px;color:#666;border-top:1px solid #f0f0eb;padding-top:8px">${r.notes}</div>`:""}
+    ${r.ref?`<a class="ref-link" href="${r.ref}" target="_blank">📎 Reference link</a>`:""}
+    </div></div>`;
+
+  // DONENESS
+  if(r.doneness){
+    const doneHeaders = r.doneness[0].length===5
+      ? ['Doneness','Temp','Time','Look & Feel']
+      : ['Doneness','Temp','Look & Feel'];
+    const doneColW = r.doneness[0].length===5 ? ['22%','25%','18%','35%'] : ['30%','30%','40%'];
+    h+=`<div class="section-card full"><button class="section-toggle" data-toggle-id="done-${id}">
+      <span class="section-toggle-left"><span class="section-toggle-icon">🌡️</span> Doneness guide</span>
+      <span class="chevron" id="chev-done-${id}">▾</span></button>
+      <div class="section-body" id="body-done-${id}">
+      <table class="ing-table" style="table-layout:fixed"><thead><tr>`;
+    doneHeaders.forEach((h2,i)=>{ h+=`<th style="width:${doneColW[i]}">${h2}</th>`; });
+    h+=`</tr></thead><tbody>`;
+    for(const d of r.doneness){
+      h+=`<tr>`;
+      d.forEach(cell=>{ h+=`<td>${cell}</td>`; });
+      h+=`</tr>`;
+    }
+    h+=`</tbody></table></div></div>`;
+  }
+
+  h+=`</div>`;
+  document.getElementById("main-content").innerHTML = `<div class="recipe-view">${h}</div>`;
+  document.getElementById("main").scrollTop = 0;
+}
+
+renderCatTabs();
+filterRecipes();
+
+// Wire up static buttons via addEventListener - Safari PWA safe
+document.getElementById('menu-btn').addEventListener('click', openSidebar);
+document.getElementById('close-sidebar-btn').addEventListener('click', closeSidebar);
+document.getElementById('overlay').addEventListener('click', closeSidebar);
+document.getElementById('search').addEventListener('input', filterRecipes);
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

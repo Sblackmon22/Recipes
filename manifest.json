@@ -2,7 +2,7 @@
   "name": "Recipe Book",
   "short_name": "Recipes",
   "description": "Personal recipe collection",
-  "start_url": "https://sblackmon22.github.io/",
+  "start_url": "https://sblackmon22.github.io/Recipes/",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -851,6 +851,21 @@ function showRecipe(id) {
 // Single delegated event listener - handles ALL clicks
 document.addEventListener('click', function(e) {
   var t = e.target;
+  // HOME SCREEN NAVIGATION
+  if (t.closest && t.closest('#home-go-recipes')) { showScreen('recipes'); return; }
+  if (t.closest && t.closest('#home-go-shelf')) { showScreen('shelf'); renderShelf(); return; }
+  if (t.closest && t.closest('#shelf-back-btn')) { showScreen('home'); return; }
+  if (t.closest && t.closest('#recipes-home-btn')) { showScreen('home'); return; }
+  // SHELF FILTER BUTTONS
+  var sf = t.closest ? t.closest('.shelf-filter-btn') : null;
+  if (sf) {
+    shelfFilter = sf.dataset.filter;
+    document.querySelectorAll('.shelf-filter-btn').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.filter === shelfFilter);
+    });
+    renderShelf();
+    return;
+  }
   // Section toggle button (or child of it)
   var tog = t.closest ? t.closest('[data-tid]') : null;
   if (tog && tog.dataset.tid) { toggle(tog.dataset.tid); return; }
@@ -925,27 +940,7 @@ function renderShelf() {
 }
 document.getElementById('shelf-search').addEventListener('input', renderShelf);
 
-// Delegated clicks for shelf filters and home navigation
-document.addEventListener('click', function(e) {
-  // home card - go to recipes
-  if (e.target.closest('#home-go-recipes')) { showScreen('recipes'); return; }
-  // home card - go to shelf
-  if (e.target.closest('#home-go-shelf')) { showScreen('shelf'); renderShelf(); return; }
-  // back from shelf
-  if (e.target.closest('#shelf-back-btn')) { showScreen('home'); return; }
-  // back from recipes to home
-  if (e.target.closest('#recipes-home-btn')) { showScreen('home'); return; }
-  // shelf filter buttons
-  var sf = e.target.closest('.shelf-filter-btn');
-  if (sf) {
-    shelfFilter = sf.dataset.filter;
-    document.querySelectorAll('.shelf-filter-btn').forEach(function(b) {
-      b.classList.toggle('active', b.dataset.filter === shelfFilter);
-    });
-    renderShelf();
-    return;
-  }
-});
+
 
 // Start on home screen
 showScreen('home');
